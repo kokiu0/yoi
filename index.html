@@ -2,12 +2,14 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Rotate Avoid Game</title>
+<title>Rotate Avoid Game+</title>
 <style>
 body {
   margin: 0;
   overflow: hidden;
   background: black;
+  color: white;
+  font-family: sans-serif;
 }
 
 #game {
@@ -30,9 +32,6 @@ body {
   width: 30px;
   height: 30px;
   background: cyan;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
 }
 
 .enemy {
@@ -42,100 +41,156 @@ body {
   background: red;
 }
 
+#ui {
+  position: absolute;
+  top: 10px;
+  left: 20px;
+  font-size: 20px;
+}
+
 #gameover {
   position: absolute;
-  color: white;
   font-size: 40px;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   display: none;
+  text-align: center;
 }
 </style>
 </head>
 <body>
 
 <div id="game">
-  <div id="world">
-    <div class="player" id="player"></div>
-  </div>
-  <div id="gameover">GAME OVER</div>
+  <div id="world"></div>
+  <div id="ui">Time: 0</div>
+  <div id="gameover">GAME OVER<br>Press R to Restart</div>
 </div>
 
 <script>
 const world = document.getElementById("world");
-const player = document.getElementById("player");
+const ui = document.getElementById("ui");
 const gameoverText = document.getElementById("gameover");
 
-let playerX = window.innerWidth / 2;
-let playerY = window.innerHeight / 2;
-
-let keys = {};
+let player;
+let playerX, playerY;
 let enemies = [];
+let keys = {};
 let gameOver = false;
+let startTime;
+let slowMode = false;
 
-// キー入力
-document.addEventListener("keydown", e => keys[e.key] = true);
-document.addEventListener("keyup", e => keys[e.key] = false);
+document.addEventListener("keydown", e => {
+  keys[e.key] = true;
+  if (e.key === "r") restart();
+  if (e.key === "Shift") slowMode = true;
+});
+document.addEventListener("keyup", e => {
+  keys[e.key] = false;
+  if (e.key === "Shift") slowMode = false;
+});
 
-// 敵生成
+function createPlayer() {
+  player = document.createElement("div");
+  player.className = "player";
+  world.appendChild(player);
+  playerX = window.innerWidth / 2;
+  playerY = window.innerHeight / 2;
+}
+
 function spawnEnemy() {
+  if (gameOver) return;
+
   const enemy = document.createElement("div");
   enemy.className = "enemy";
-  enemy.x = Math.random() * window.innerWidth;
-  enemy.y = Math.random() * window.innerHeight;
-  enemy.vx = (Math.random() - 0.5) * 4;
-  enemy.vy = (Math.random() - 0.5) * 4;
-  enemy.style.left = enemy.x + "px";
-  enemy.style.top = enemy.y + "px";
+
+  const margin = 50;
+  const side = Math.floor(Math.random() * 4);
+
+  if (side === 0) {
+    enemy.x = Math.random() * window.innerWidth;
+    enemy.y = -margin;
+  } else if (side === 1) {
+    enemy.x = Math.random() * window.innerWidth;
+    enemy.y = window.innerHeight + margin;
+  } else if (side === 2) {
+    enemy.x = -margin;
+    enemy.y = Math.random() * window.innerHeight;
+  } else {
+    enemy.x = window.innerWidth + margin;
+    enemy.y = Math.random() * window.innerHeight;
+  }
+
+  const dx = playerX - enemy.x;
+  const dy = playerY - enemy.y;
+  const len = Math.sqrt(dx*dx + dy*dy);
+
+  enemy.vx = (dx/len) * 2;
+  enemy.vy = (dy/len) * 2;
+
   world.appendChild(enemy);
   enemies.push(enemy);
 }
 
-setInterval(spawnEnemy, 1000);
+function restart() {
+  world.innerHTML = "";
+  enemies = [];
+  gameOver = false;
+  gameoverText.style.display = "none";
+  createPlayer();
+  startTime = Date.now();
+}
 
-// 衝突判定
 function checkCollision(a, b) {
   const dx = a.x - b.x;
   const dy = a.y - b.y;
-  return Math.sqrt(dx*dx + dy*dy) < 30;
+  return Math.sqrt(dx*dx + dy*dy) < 25;
 }
 
-// メインループ
 function gameLoop() {
-  if (gameOver) return;
+  if (!gameOver) {
 
-  // 移動
-  if (keys["ArrowUp"]) playerY -= 5;
-  if (keys["ArrowDown"]) playerY += 5;
-  if (keys["ArrowLeft"]) playerX -= 5;
-  if (keys["ArrowRight"]) playerX += 5;
+    let speed = slowMode ? 2 : 5;
 
-  player.style.left = playerX + "px";
-  player.style.top = playerY + "px";
+    if (keys["ArrowUp"]) playerY -= speed;
+    if (keys["ArrowDown"]) playerY += speed;
+    if (keys["ArrowLeft"]) playerX -= speed;
+    if (keys["ArrowRight"]) playerX += speed;
 
-  // 敵移動
-  enemies.forEach(enemy => {
-    enemy.x += enemy.vx;
-    enemy.y += enemy.vy;
+    const half = 15;
+    playerX = Math.max(half, Math.min(window.innerWidth - half, playerX));
+    playerY = Math.max(half, Math.min(window.innerHeight - half, playerY));
 
-    enemy.style.left = enemy.x + "px";
-    enemy.style.top = enemy.y + "px";
+    player.style.left = playerX + "px";
+    player.style.top = playerY + "px";
 
-    if (checkCollision({x: playerX, y: playerY}, enemy)) {
-      gameOver = true;
-      gameoverText.style.display = "block";
-    }
-  });
+    enemies.forEach(enemy => {
+      enemy.x += enemy.vx;
+      enemy.y += enemy.vy;
 
-  // 5秒で一回転（360度）
-  const time = Date.now() % 5000;
-  const angle = (time / 5000) * 360;
-  world.style.transform = `rotateZ(${angle}deg)`;
+      enemy.style.left = enemy.x + "px";
+      enemy.style.top = enemy.y + "px";
+
+      if (checkCollision({x:playerX,y:playerY}, enemy)) {
+        gameOver = true;
+        gameoverText.style.display = "block";
+      }
+    });
+
+    const elapsed = ((Date.now() - startTime)/1000).toFixed(1);
+    ui.textContent = "Time: " + elapsed;
+
+    const time = Date.now() % 5000;
+    const angle = (time / 5000) * 360;
+    world.style.transform = `rotateZ(${angle}deg)`;
+  }
 
   requestAnimationFrame(gameLoop);
 }
 
+setInterval(spawnEnemy, 1000);
+
+restart();
 gameLoop();
 </script>
 
