@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Rotate Survival Clean</title>
+<title>Rotate Survival SlowWorld</title>
 <style>
 body {
   margin: 0;
@@ -46,7 +46,7 @@ body {
   left: -50vw;
 }
 
-/* プレイヤー（三角） */
+/* プレイヤー */
 .player {
   position: absolute;
   width: 0;
@@ -56,7 +56,7 @@ body {
   border-bottom: 30px solid cyan;
 }
 
-/* 敵（オレンジの丸） */
+/* 敵 */
 .enemy {
   position: absolute;
   width: 30px;
@@ -103,8 +103,13 @@ let playerX, playerY;
 let enemies = [];
 let keys = {};
 let gameOver = false;
-let startTime;
 let slowMode = false;
+
+/* ===== 時間管理 ===== */
+let baseTimeScale = 0.8; // 通常時の全体スピード
+let timeScale = baseTimeScale;
+let gameTime = 0;
+let lastFrame = Date.now();
 
 document.addEventListener("keydown", e => {
   keys[e.key] = true;
@@ -164,7 +169,7 @@ function restart() {
   gameOver = false;
   gameoverText.style.display = "none";
   createPlayer();
-  startTime = Date.now();
+  gameTime = 0;
 }
 
 function checkCollision(a, b) {
@@ -174,14 +179,22 @@ function checkCollision(a, b) {
 }
 
 function gameLoop() {
+
+  const now = Date.now();
+  const delta = (now - lastFrame) / 1000;
+  lastFrame = now;
+
+  timeScale = slowMode ? 0.4 : baseTimeScale;
+  gameTime += delta * timeScale;
+
   if (!gameOver) {
 
-    let speed = slowMode ? 2 : 5;
+    let moveSpeed = 300 * delta * timeScale;
 
-    if (keys["ArrowUp"]) playerY -= speed;
-    if (keys["ArrowDown"]) playerY += speed;
-    if (keys["ArrowLeft"]) playerX -= speed;
-    if (keys["ArrowRight"]) playerX += speed;
+    if (keys["ArrowUp"]) playerY -= moveSpeed;
+    if (keys["ArrowDown"]) playerY += moveSpeed;
+    if (keys["ArrowLeft"]) playerX -= moveSpeed;
+    if (keys["ArrowRight"]) playerX += moveSpeed;
 
     const half = 15;
     playerX = Math.max(half, Math.min(window.innerWidth - half, playerX));
@@ -191,8 +204,8 @@ function gameLoop() {
     player.style.top = playerY + "px";
 
     enemies.forEach(enemy => {
-      enemy.x += enemy.vx;
-      enemy.y += enemy.vy;
+      enemy.x += enemy.vx * 200 * delta * timeScale;
+      enemy.y += enemy.vy * 200 * delta * timeScale;
 
       enemy.style.left = enemy.x + "px";
       enemy.style.top = enemy.y + "px";
@@ -203,22 +216,20 @@ function gameLoop() {
       }
     });
 
-    const elapsed = ((Date.now() - startTime)/1000).toFixed(1);
-    ui.textContent = "Time: " + elapsed;
+    ui.textContent = "Time: " + gameTime.toFixed(1);
 
-    // ゆるやか加速回転
-    const elapsedSec = (Date.now() - startTime) / 1000;
-    let rotationDuration = 100 - Math.sqrt(elapsedSec) * 0.3;
-    if (rotationDuration < 50) rotationDuration = 50;
+    // ゆるやか回転加速
+    let rotationDuration = 8 - Math.sqrt(gameTime) * 0.2;
+    if (rotationDuration < 3) rotationDuration = 3;
 
-    const angle = (Date.now() / (rotationDuration * 1000)) * 360 % 360;
+    const angle = (gameTime / rotationDuration) * 360;
     world.style.transform = `rotateZ(${angle}deg)`;
   }
 
   requestAnimationFrame(gameLoop);
 }
 
-setInterval(spawnEnemy, 1000);
+setInterval(spawnEnemy, 1200);
 
 restart();
 gameLoop();
