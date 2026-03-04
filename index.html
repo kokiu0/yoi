@@ -208,8 +208,8 @@ function gameLoop() {
 
     // ゆるやか加速回転
     const elapsedSec = (Date.now() - startTime) / 1000;
-    let rotationDuration = 6 - Math.sqrt(elapsedSec) * 0.3;
-    if (rotationDuration < 2) rotationDuration = 2;
+    let rotationDuration = 10 - Math.sqrt(elapsedSec) * 0.3;
+    if (rotationDuration < 5) rotationDuration = 5;
 
     const angle = (Date.now() / (rotationDuration * 1000)) * 360 % 360;
     world.style.transform = `rotateZ(${angle}deg)`;
