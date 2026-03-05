@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Rotate Survival Evolution+</title>
+<title>Rotate Survival FULL</title>
 <style>
 body{
   margin:0;
@@ -11,7 +11,6 @@ body{
   color:white;
   font-family:sans-serif;
 }
-
 #game{
   position:relative;
   width:100vw;
@@ -19,14 +18,11 @@ body{
   overflow:hidden;
   border:4px solid white;
 }
-
 #world{
   position:absolute;
   width:100%;
   height:100%;
 }
-
-/* プレイヤー */
 .player{
   position:absolute;
   width:30px;
@@ -36,8 +32,11 @@ body{
   transform-origin:center;
   box-shadow:0 -10px 20px cyan;
 }
-
-/* 軌跡 */
+.enemy{
+  position:absolute;
+  background:orange;
+  border-radius:50%;
+}
 .trail{
   position:absolute;
   width:10px;
@@ -46,21 +45,12 @@ body{
   background:rgba(0,255,255,0.5);
   pointer-events:none;
 }
-
-/* 敵 */
-.enemy{
-  position:absolute;
-  background:orange;
-  border-radius:50%;
-}
-
 #ui{
   position:absolute;
   top:10px;
   left:20px;
   font-size:20px;
 }
-
 #gameover{
   position:absolute;
   font-size:40px;
@@ -70,8 +60,6 @@ body{
   display:none;
   text-align:center;
 }
-
-/* スタート警告 */
 #warning{
   position:absolute;
   width:100%;
@@ -93,10 +81,7 @@ body{
   <div id="world"></div>
   <div id="ui">Time: 0</div>
   <div id="gameover">GAME OVER<br>Press R to Restart</div>
-  <div id="warning">
-    ⚠ 酔い注意 ⚠<br>
-    Click to Start
-  </div>
+  <div id="warning">⚠ 酔い注意 ⚠<br>Click to Start</div>
 </div>
 
 <script>
@@ -105,31 +90,52 @@ const ui=document.getElementById("ui");
 const gameoverText=document.getElementById("gameover");
 const warning=document.getElementById("warning");
 
-let player;
-let playerX,playerY;
+let player=null;
+let playerX=0, playerY=0;
 let enemies=[];
-let keys={};
 let trails=[];
+let keys={};
+
+let gameStarted=false;
 let gameOver=false;
 let paused=false;
 
-let baseTimeScale=0.8;
 let gameTime=0;
-let lastFrame=Date.now();
+let lastFrame=0;
+let spawnTimer=null;
 
 warning.onclick=()=>{
   warning.style.display="none";
-  restart();
+  startGame();
 };
 
 document.addEventListener("keydown",e=>{
   keys[e.key]=true;
-  if(e.key==="r")restart();
-  if(e.key==="p")paused=!paused;
+  if(e.key==="r" && gameStarted) restart();
+  if(e.key==="p" && gameStarted) paused=!paused;
 });
 document.addEventListener("keyup",e=>{
   keys[e.key]=false;
 });
+
+function startGame(){
+  gameStarted=true;
+  restart();
+  lastFrame=performance.now();
+  requestAnimationFrame(gameLoop);
+  spawnTimer=setInterval(spawnEnemy,1200);
+}
+
+function restart(){
+  world.innerHTML="";
+  enemies=[];
+  trails=[];
+  gameOver=false;
+  paused=false;
+  gameTime=0;
+  gameoverText.style.display="none";
+  createPlayer();
+}
 
 function createPlayer(){
   player=document.createElement("div");
@@ -140,7 +146,7 @@ function createPlayer(){
 }
 
 function spawnEnemy(){
-  if(gameOver||paused)return;
+  if(!gameStarted || gameOver || paused) return;
 
   const enemy=document.createElement("div");
   enemy.className="enemy";
@@ -151,7 +157,7 @@ function spawnEnemy(){
   enemy.style.height=size+"px";
   enemy.size=size;
 
-  const margin=50;
+  const margin=60;
   const side=Math.floor(Math.random()*4);
 
   if(side===0){
@@ -170,7 +176,7 @@ function spawnEnemy(){
 
   const dx=playerX-enemy.x;
   const dy=playerY-enemy.y;
-  const len=Math.sqrt(dx*dx+dy*dy);
+  const len=Math.sqrt(dx*dx+dy*dy)||1;
 
   enemy.vx=dx/len;
   enemy.vy=dy/len;
@@ -181,21 +187,10 @@ function spawnEnemy(){
   enemies.push(enemy);
 }
 
-function restart(){
-  world.innerHTML="";
-  enemies=[];
-  trails=[];
-  gameOver=false;
-  paused=false;
-  gameoverText.style.display="none";
-  createPlayer();
-  gameTime=0;
-}
-
-function checkCollision(a,b){
-  const dx=a.x-b.x;
-  const dy=a.y-b.y;
-  return Math.sqrt(dx*dx+dy*dy)<(b.size/2);
+function checkCollision(enemy){
+  const dx=playerX-enemy.x;
+  const dy=playerY-enemy.y;
+  return Math.sqrt(dx*dx+dy*dy)<(enemy.size/2);
 }
 
 function addTrail(){
@@ -208,22 +203,23 @@ function addTrail(){
   trails.push(t);
 }
 
-function gameLoop(){
+function gameLoop(now){
 
-  const now=Date.now();
+  if(!gameStarted) return;
+
   const delta=(now-lastFrame)/1000;
   lastFrame=now;
 
   if(!paused && !gameOver){
 
-    gameTime+=delta*baseTimeScale;
+    gameTime+=delta;
 
-    let moveSpeed=300*delta*baseTimeScale;
+    let moveSpeed=300*delta;
 
-    if(keys["ArrowUp"])playerY-=moveSpeed;
-    if(keys["ArrowDown"])playerY+=moveSpeed;
-    if(keys["ArrowLeft"])playerX-=moveSpeed;
-    if(keys["ArrowRight"])playerX+=moveSpeed;
+    if(keys["ArrowUp"]) playerY-=moveSpeed;
+    if(keys["ArrowDown"]) playerY+=moveSpeed;
+    if(keys["ArrowLeft"]) playerX-=moveSpeed;
+    if(keys["ArrowRight"]) playerX+=moveSpeed;
 
     const half=15;
     playerX=Math.max(half,Math.min(window.innerWidth-half,playerX));
@@ -233,43 +229,46 @@ function gameLoop(){
     player.style.top=playerY+"px";
 
     let angleDeg=0;
-    if(keys["ArrowUp"])angleDeg=0;
-    if(keys["ArrowRight"])angleDeg=90;
-    if(keys["ArrowDown"])angleDeg=180;
-    if(keys["ArrowLeft"])angleDeg=270;
+    if(keys["ArrowUp"]) angleDeg=0;
+    if(keys["ArrowRight"]) angleDeg=90;
+    if(keys["ArrowDown"]) angleDeg=180;
+    if(keys["ArrowLeft"]) angleDeg=270;
     player.style.transform=`rotate(${angleDeg}deg)`;
 
     addTrail();
 
-    trails.forEach((t,i)=>{
+    for(let i=trails.length-1;i>=0;i--){
+      let t=trails[i];
       t.life-=delta;
       t.style.opacity=t.life/0.2;
       if(t.life<=0){
         t.remove();
         trails.splice(i,1);
       }
-    });
+    }
 
-    enemies.forEach(enemy=>{
+    for(let i=enemies.length-1;i>=0;i--){
+      let enemy=enemies[i];
+
       const wave=Math.sin(gameTime*3+enemy.waveOffset);
       const speedMultiplier=1+wave*0.5;
 
-      enemy.x+=enemy.vx*200*delta*baseTimeScale*enemy.baseSpeed*speedMultiplier;
-      enemy.y+=enemy.vy*200*delta*baseTimeScale*enemy.baseSpeed*speedMultiplier;
+      enemy.x+=enemy.vx*200*delta*enemy.baseSpeed*speedMultiplier;
+      enemy.y+=enemy.vy*200*delta*enemy.baseSpeed*speedMultiplier;
 
       enemy.style.left=enemy.x+"px";
       enemy.style.top=enemy.y+"px";
 
-      if(checkCollision({x:playerX,y:playerY},enemy)){
+      if(checkCollision(enemy)){
         gameOver=true;
         gameoverText.style.display="block";
       }
-    });
+    }
 
     ui.textContent="Time: "+gameTime.toFixed(1);
 
     let rotationDuration=8-Math.sqrt(gameTime)*0.2;
-    if(rotationDuration<3)rotationDuration=3;
+    if(rotationDuration<3) rotationDuration=3;
 
     const angle=(gameTime/rotationDuration)*360;
     world.style.transform=`rotateZ(${angle}deg)`;
@@ -277,9 +276,6 @@ function gameLoop(){
 
   requestAnimationFrame(gameLoop);
 }
-
-setInterval(spawnEnemy,1200);
-gameLoop();
 </script>
 
 </body>
