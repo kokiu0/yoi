@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>Rotate Survival</title>
+<title>Rotate Survival Radar</title>
 
 <style>
 
@@ -28,25 +28,36 @@ width:100%;
 height:100%;
 }
 
-/* 十字ライン */
+/* レーダー十字 */
 
 #crossV{
 position:absolute;
 left:50%;
-top:0;
+top:-100vh;
 width:2px;
-height:100%;
-background:rgba(255,255,255,0.2);
+height:300vh;
+background:linear-gradient(
+transparent,
+rgba(0,255,255,0.5),
+transparent
+);
+transform:translateX(-50%);
 pointer-events:none;
 }
 
 #crossH{
 position:absolute;
 top:50%;
-left:0;
+left:-100vw;
 height:2px;
-width:100%;
-background:rgba(255,255,255,0.2);
+width:300vw;
+background:linear-gradient(
+90deg,
+transparent,
+rgba(0,255,255,0.5),
+transparent
+);
+transform:translateY(-50%);
 pointer-events:none;
 }
 
@@ -121,10 +132,12 @@ cursor:pointer;
 
 <div id="game">
 
-<div id="world"></div>
+<div id="world">
 
 <div id="crossV"></div>
 <div id="crossH"></div>
+
+</div>
 
 <div id="ui"></div>
 
@@ -198,7 +211,10 @@ requestAnimationFrame(gameLoop)
 
 function restart(){
 
-world.innerHTML=""
+world.innerHTML=`
+<div id="crossV"></div>
+<div id="crossH"></div>
+`
 
 enemies=[]
 trails=[]
@@ -338,7 +354,6 @@ trails.splice(i,1)
 for(let enemy of enemies){
 
 const wave=Math.sin(gameTime*3+enemy.waveOffset)
-
 const speedMultiplier=1+wave*0.5
 
 enemy.x+=enemy.vx*200*delta*enemy.baseSpeed*speedMultiplier
@@ -367,9 +382,7 @@ ui.textContent=
 "   High : "+Number(highScore).toFixed(1)
 
 let rotationDuration=8-Math.sqrt(gameTime)*0.2
-
-if(rotationDuration<3)
-rotationDuration=3
+if(rotationDuration<3) rotationDuration=3
 
 const angle=(gameTime/rotationDuration)*360
 
@@ -377,7 +390,6 @@ world.style.transform=`rotateZ(${angle}deg)`
 }
 
 requestAnimationFrame(gameLoop)
-
 }
 
 </script>
