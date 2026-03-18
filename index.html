@@ -204,16 +204,8 @@ restart()
 
 lastFrame=performance.now()
 
-spawnTimer=setInterval(()=>{
+spawnTimer=setInterval(spawnEnemy,1200)
 
-spawnEnemy()
-
-if(gameTime>10) spawnEnemy()
-if(gameTime>20) spawnEnemy()
-if(gameTime>30) spawnEnemy()
-if(gameTime>40) spawnEnemy()
-if(gameTime>50) spawnEnemy()
-if(gameTime>60) spawnEnemy()
 requestAnimationFrame(gameLoop)
 }
 
